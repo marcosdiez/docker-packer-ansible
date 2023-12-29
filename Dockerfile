@@ -4,7 +4,8 @@ FROM hashicorp/packer:$PACKER_VERSION
 LABEL maintainer="Marcos Diez <marcos AT unitron.com.br"
 
 RUN apk update
-RUN apk add --no-cache ansible py-pip openssh openssl libcurl
+RUN apk add --no-cache ansible py-pip openssh openssl libcurl aws-cli
+RUN pip3 install boto3
 
 RUN addgroup -g 1000 -S container && adduser -u 1000 -s /bin/ash -G container -D container
 
