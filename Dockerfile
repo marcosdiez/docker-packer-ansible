@@ -1,29 +1,38 @@
-ARG PACKER_VERSION=1.10.0
-FROM hashicorp/packer:$PACKER_VERSION
+# ARG PACKER_VERSION=1.10.0
+# FROM hashicorp/packer:$PACKER_VERSION
 
-LABEL maintainer="Marcos Diez <marcos AT unitron.com.br"
+# nothing works with alpine, sorry
 
-RUN apk update
-RUN apk add --no-cache ansible py-pip openssh openssl libcurl aws-cli
-RUN pip3 install boto3
+FROM ubuntu:22.04
 
-RUN addgroup -g 1000 -S container && adduser -u 1000 -s /bin/ash -G container -D container
+LABEL maintainer="Marcos Diez <marcos AT unitron.com.br>"
 
-RUN wget https://github.com/benkehoe/aws-whoami-golang/releases/download/v2.6.0/aws-whoami-v2.6.0-linux-amd64.tar.gz -O /tmp/aws-whoami-v2.6.0-linux-amd64.tar.gz
-RUN cd /tmp;tar zfxv /tmp/aws-whoami-v2.6.0-linux-amd64.tar.gz
-RUN mv /tmp/aws-whoami /bin
+RUN apt-get update
+ARG DEBIAN_FRONTEND=noninteractive
+# RUN apt-get install -y ansible curl awscli nano packer sudo git
+RUN apt-get install -y curl awscli nano sudo git unzip python3-pip
+RUN pip3 install ansible boto3 crowdstrike-falconpy
 
-# this library is needed for aws-whoami to work
-RUN apk add --no-cache gcompat libc6-compat libstdc++
-RUN ln -s /lib/libc.so.6 /usr/lib/libresolv.so.2
+RUN groupadd --gid 1000 ubuntu && useradd --uid 1000 --gid 1000 -m ubuntu
 
-USER container
+RUN curl https://releases.hashicorp.com/packer/1.10.0/packer_1.10.0_linux_amd64.zip > /tmp/packer.zip
+RUN apt-get install unzip
+RUN unzip /tmp/packer.zip -d /tmp
+RUN mv /tmp/packer /usr/bin/packer
+RUN rm /tmp/packer.zip
+
+# if you don't do that, guess what, the crowdstrike ansible module fails
+RUN echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' | tee -a  /etc/sudoers
+
+USER ubuntu
 
 RUN ansible-galaxy install git+https://github.com/ansible-lockdown/AMAZON2-CIS.git
 RUN ansible-galaxy install git+https://github.com/ansible-lockdown/RHEL9-CIS.git
 RUN ansible-galaxy install git+https://github.com/ansible-lockdown/UBUNTU22-CIS.git
 
+# RUN packer --version
 RUN packer plugins install github.com/hashicorp/amazon
 RUN packer plugins install github.com/hashicorp/ansible
 
-ENTRYPOINT ["/bin/packer"]
+
+# # ENTRYPOINT ["/bin/packer"]
